@@ -9,4 +9,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV PORT=8000
-CMD npx supergateway --stdio "python main.py" --port $PORT --output-transport streamable-http
+CMD npx supergateway --stdio "python main.py" --port $PORT --outputTransport streamableHttp
