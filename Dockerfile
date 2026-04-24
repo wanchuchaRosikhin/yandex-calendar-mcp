@@ -9,4 +9,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 ENV PORT=8000
-CMD npx supergateway --stdio "python main.py" --port $PORT
+CMD npx supergateway --stdio "python main.py" --port $PORT --spawn-per-session
