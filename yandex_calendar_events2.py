@@ -110,20 +110,34 @@ class YandexCalendarEvents:
                 event_dict['uid'] = line.replace('UID:', '')
             elif line.startswith('DTSTART'):
                 try:
-                    date_str = line.split(':')[1]
-                    # Преобразуем дату из формата YYYYMMDDTHHMMSS
-                    dt = datetime.datetime.strptime(date_str[:15], '%Y%m%dT%H%M%S')
-                    event_dict['start_time'] = dt.isoformat()
-                    event_dict['start_display'] = dt.strftime('%d.%m.%Y %H:%M')
+                    date_str = line.split(':')[-1].strip()
+                    if 'T' in date_str:
+                        # Обычное событие с временем: YYYYMMDDTHHMMSS[Z]
+                        dt = datetime.datetime.strptime(date_str[:15], '%Y%m%dT%H%M%S')
+                        event_dict['start_time'] = dt.isoformat()
+                        event_dict['start_display'] = dt.strftime('%d.%m.%Y %H:%M')
+                    else:
+                        # Событие на весь день: YYYYMMDD (DTSTART;VALUE=DATE:YYYYMMDD)
+                        d = datetime.datetime.strptime(date_str[:8], '%Y%m%d')
+                        event_dict['start_time'] = d.isoformat()
+                        event_dict['start_display'] = d.strftime('%d.%m.%Y (весь день)')
+                        event_dict['all_day'] = True
                 except Exception:
                     # Если формат даты другой, пропускаем
                     pass
             elif line.startswith('DTEND'):
                 try:
-                    date_str = line.split(':')[1]
-                    dt = datetime.datetime.strptime(date_str[:15], '%Y%m%dT%H%M%S')
-                    event_dict['end_time'] = dt.isoformat()
-                    event_dict['end_display'] = dt.strftime('%d.%m.%Y %H:%M')
+                    date_str = line.split(':')[-1].strip()
+                    if 'T' in date_str:
+                        # Обычное событие с временем
+                        dt = datetime.datetime.strptime(date_str[:15], '%Y%m%dT%H%M%S')
+                        event_dict['end_time'] = dt.isoformat()
+                        event_dict['end_display'] = dt.strftime('%d.%m.%Y %H:%M')
+                    else:
+                        # Событие на весь день
+                        d = datetime.datetime.strptime(date_str[:8], '%Y%m%d')
+                        event_dict['end_time'] = d.isoformat()
+                        event_dict['end_display'] = d.strftime('%d.%m.%Y (весь день)')
                 except Exception:
                     # Если формат даты другой, пропускаем
                     pass
