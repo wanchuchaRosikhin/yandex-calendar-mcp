@@ -258,7 +258,7 @@ END:VCALENDAR"""
         import asyncio    
         try:
             # Вычисляем даты начала и конца периода
-            start = datetime.datetime.now()
+            start = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
             end = start + datetime.timedelta(days=days)
             
             # Выполняем синхронные операции в отдельном потоке
