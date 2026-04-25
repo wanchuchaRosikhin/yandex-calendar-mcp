@@ -77,6 +77,7 @@ class YandexCalendarEvents:
                 
             # Используем первый доступный календарь
             self.caldav_calendar = calendars[0]
+            self.caldav_calendars = calendars  # все календари
             print(f"Successfully connected to calendar: {self.caldav_calendar.name}")
             
         except Exception as e:
@@ -264,10 +265,12 @@ END:VCALENDAR"""
             # Выполняем синхронные операции в отдельном потоке
             def _get_events():
                 # Получаем события за указанный период
-                events = self.caldav_calendar.date_search(
-                    start=start,
-                    end=end
-                )
+                events = []
+                    for cal in self.caldav_calendars:
+                        try:
+                            events += cal.date_search(start=start, end=end)
+                        except Exception:
+                            continue
                 
                 if not events:
                     return []
