@@ -96,6 +96,29 @@ async def get_upcoming_events(days: int = 90, format_type: str = "json", ctx: Co
 
 
 @mcp.tool()
+async def list_calendars(ctx: Context = None) -> str:
+    """
+    Получить список всех доступных календарей с их индексами.
+    Используйте для определения правильного calendar_index при создании событий.
+
+    Returns:
+        str: JSON со списком календарей и их индексами.
+    """
+    if not hasattr(calendar_event, 'caldav_calendars') or not calendar_event.caldav_calendars:
+        return json.dumps({"error": "Календари не найдены"}, ensure_ascii=False)
+    
+    calendars_list = []
+    for i, cal in enumerate(calendar_event.caldav_calendars):
+        calendars_list.append({
+            "index": i,
+            "name": getattr(cal, 'name', f'calendar_{i}'),
+            "url": str(cal.url) if hasattr(cal, 'url') else ""
+        })
+    
+    return json.dumps({"calendars": calendars_list, "count": len(calendars_list)}, ensure_ascii=False, indent=2)
+
+
+@mcp.tool()
 async def create_calendar_event(
     title: str, 
     start_date: str, 
