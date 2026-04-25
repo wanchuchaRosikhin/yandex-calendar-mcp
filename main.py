@@ -99,9 +99,12 @@ async def get_upcoming_events(days: int = 90, format_type: str = "json", ctx: Co
 async def create_calendar_event(
     title: str, 
     start_date: str, 
-    start_time: str, 
+    start_time: str = "", 
     duration_minutes: int = 60, 
-    description: str = "", 
+    description: str = "",
+    all_day: bool = False,
+    rrule: str = "",
+    calendar_index: int = 0,
     ctx: Context = None
 ) -> str:
     """
@@ -110,9 +113,21 @@ async def create_calendar_event(
     Args:
         title (str): Название события.
         start_date (str): Дата начала события в формате ДД.ММ.ГГГГ (например, 15.05.2025).
-        start_time (str): Время начала события в формате ЧЧ:ММ (например, 14:30).
+        start_time (str): Время начала события в формате ЧЧ:ММ (например, 14:30). 
+            Не требуется для событий на весь день.
         duration_minutes (int): Продолжительность события в минутах. По умолчанию: 60 минут.
+            Игнорируется для событий на весь день.
         description (str): Описание события. По умолчанию: пустая строка.
+        all_day (bool): Создать событие на весь день. По умолчанию: False.
+        rrule (str): Правило повторения в формате iCal RRULE. Примеры:
+            "FREQ=YEARLY;INTERVAL=1" - раз в год,
+            "FREQ=MONTHLY;INTERVAL=1" - раз в месяц,
+            "FREQ=WEEKLY;INTERVAL=1" - раз в неделю,
+            "FREQ=WEEKLY;BYDAY=MO,WE,FR" - каждые пн, ср, пт,
+            "FREQ=YEARLY;COUNT=5" - раз в год, 5 повторений.
+            По умолчанию: пустая строка (без повторения).
+        calendar_index (int): Индекс календаря (0 = первый/рабочий, 1 = второй/личный и т.д.).
+            По умолчанию: 0.
         ctx (Context): Контекст MCP, предоставляемый автоматически.
 
     Returns:
@@ -128,13 +143,18 @@ async def create_calendar_event(
         return error_msg
     
     try:
-        # Преобразование строк даты и времени в datetime
         try:
             day, month, year = map(int, start_date.split('.'))
-            hour, minute = map(int, start_time.split(':'))
             
-            start = datetime.datetime(year, month, day, hour, minute)
-            end = start + datetime.timedelta(minutes=duration_minutes)
+            if all_day:
+                start = datetime.datetime(year, month, day)
+                end = start + datetime.timedelta(days=1)
+            else:
+                if not start_time:
+                    return "Для события с временем необходимо указать start_time в формате ЧЧ:ММ."
+                hour, minute = map(int, start_time.split(':'))
+                start = datetime.datetime(year, month, day, hour, minute)
+                end = start + datetime.timedelta(minutes=duration_minutes)
             
         except ValueError as e:
             error_msg = f"Ошибка формата даты или времени: {str(e)}. Используйте формат ДД.ММ.ГГГГ для даты и ЧЧ:ММ для времени."
@@ -143,7 +163,10 @@ async def create_calendar_event(
             return error_msg
         
         # Создание события
-        result = await calendar_event.create_event(title, start, end, description)
+        result = await calendar_event.create_event(
+            title, start, end, description,
+            all_day=all_day, rrule=rrule, calendar_index=calendar_index
+        )
         
         if ctx:
             if "успешно" in result:
