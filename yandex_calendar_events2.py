@@ -75,10 +75,11 @@ class YandexCalendarEvents:
             if not calendars:
                 raise Exception("No calendars found")
                 
-            # Используем первый доступный календарь
+            # Используем первый доступный календарь (для обратной совместимости)
             self.caldav_calendar = calendars[0]
-            self.caldav_calendars = calendars  # все календари
-            print(f"Successfully connected to calendar: {self.caldav_calendar.name}")
+            # Сохраняем все календари для поиска по всем сразу
+            self.caldav_calendars = calendars
+            print(f"Successfully connected to {len(calendars)} calendar(s)")
             
         except Exception as e:
             print(f"CalDAV Error: {str(e)}")
@@ -259,18 +260,20 @@ END:VCALENDAR"""
         import asyncio    
         try:
             # Вычисляем даты начала и конца периода
+            # Начинаем с полуночи сегодня, чтобы захватить all-day события
             start = datetime.datetime.combine(datetime.date.today(), datetime.time.min)
             end = start + datetime.timedelta(days=days)
             
             # Выполняем синхронные операции в отдельном потоке
             def _get_events():
-                # Получаем события за указанный период
+                # Получаем события из всех календарей
                 events = []
-                    for cal in self.caldav_calendars:
-                        try:
-                            events += cal.date_search(start=start, end=end)
-                        except Exception:
-                            continue
+                for cal in self.caldav_calendars:
+                    try:
+                        events += cal.date_search(start=start, end=end)
+                    except Exception as e:
+                        print(f"Ошибка при поиске в календаре: {str(e)}")
+                        continue
                 
                 if not events:
                     return []
