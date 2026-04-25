@@ -174,7 +174,9 @@ class YandexCalendarEvents:
         return event_dict
 
     async def create_event(self, title: str, start: datetime.datetime, 
-                           end: datetime.datetime, description: str = "") -> str:
+                           end: datetime.datetime, description: str = "",
+                           all_day: bool = False, rrule: str = "",
+                           calendar_index: int = 0) -> str:
         """
         Создать новое событие через CalDAV
         
@@ -183,35 +185,54 @@ class YandexCalendarEvents:
             start (datetime.datetime): Дата и время начала события
             end (datetime.datetime): Дата и время окончания события
             description (str, optional): Описание события. По умолчанию: ""
+            all_day (bool, optional): Событие на весь день. По умолчанию: False
+            rrule (str, optional): Правило повторения в формате iCal RRULE
+                (например, "FREQ=YEARLY;INTERVAL=1"). По умолчанию: ""
+            calendar_index (int, optional): Индекс календаря (0 = первый). По умолчанию: 0
             
         Returns:
             str: Сообщение о результате создания события
         """
         if not self.caldav_calendar:
             return "CalDAV не настроен"
+        
+        # Выбираем календарь
+        target_calendar = self.caldav_calendar
+        if hasattr(self, 'caldav_calendars') and calendar_index < len(self.caldav_calendars):
+            target_calendar = self.caldav_calendars[calendar_index]
             
         event_uid = f"{datetime.datetime.now().timestamp()}@yandex.ru"
+        
+        # Формируем DTSTART/DTEND в зависимости от типа события
+        if all_day:
+            dt_start = f"DTSTART;VALUE=DATE:{start.strftime('%Y%m%d')}"
+            dt_end = f"DTEND;VALUE=DATE:{end.strftime('%Y%m%d')}"
+        else:
+            dt_start = f"DTSTART:{start.strftime('%Y%m%dT%H%M%S')}"
+            dt_end = f"DTEND:{end.strftime('%Y%m%dT%H%M%S')}"
+        
+        # Формируем RRULE если задано
+        rrule_line = f"\nRRULE:{rrule}" if rrule else ""
+        
         ical = f"""BEGIN:VCALENDAR
 VERSION:2.0
 BEGIN:VEVENT
-DTSTART:{start.strftime('%Y%m%dT%H%M%S')}
-DTEND:{end.strftime('%Y%m%dT%H%M%S')}
+{dt_start}
+{dt_end}
 SUMMARY:{title}
-DESCRIPTION:{description}
+DESCRIPTION:{description}{rrule_line}
 UID:{event_uid}
 END:VEVENT
 END:VCALENDAR"""
 
-        # Используем блок asyncio для выполнения синхронной операции в асинхронном контексте
         import asyncio
         try:
-            # Выполняем синхронную операцию в отдельном потоке
-            # чтобы не блокировать основной поток выполнения
             def _add_event():
-                return self.caldav_calendar.add_event(ical)
+                return target_calendar.add_event(ical)
                 
             await asyncio.to_thread(_add_event)
-            return f"Событие '{title}' успешно создано"
+            cal_name = getattr(target_calendar, 'name', f'#{calendar_index}')
+            return f"Событие '{title}' успешно создано в календаре '{cal_name}'"
         except Exception as e:
             return f"Ошибка создания события: {str(e)}"
 
